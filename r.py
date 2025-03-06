@@ -20,7 +20,7 @@ admin_id = ["7129010361"]
 
 # Group and channel details
 GROUP_ID = "-1002369239894"
-CHANNEL_USERNAME = "@ravi_ka_rola"
+CHANNEL_USERNAME = "@KHAPITAR_BALAK77"
 
 # Default cooldown and attack limits
 COOLDOWN_TIME = 0  # Cooldown in seconds
