@@ -5,7 +5,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 
 # Bot Credentials
-TELEGRAM_BOT_TOKEN = '7675437323:AAGqGH5mhWMUbjpoFuF2I2offywpY2Ayay0'
+TELEGRAM_BOT_TOKEN = '7675437323:AAHfZH5BwzDvBUhLzzbGM5nBgJgMD_UFUtI'
 ADMIN_USER_ID = 7129010361  # अपने टेलीग्राम ID से बदलो
 USERS_FILE = 'users.txt'
 KEYS_FILE = 'keys.txt'
