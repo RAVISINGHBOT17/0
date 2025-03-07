@@ -44,15 +44,44 @@ async def start(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     message = (
         "🚀 *WELCOME TO THE ULTIMATE ATTACK BOT!* 🚀\n\n"
-        "🔥 *POWERED BY:* 彡[RAVI]彡\n"
+        "🔥 *POWERED BY:* ⚡[RAVI]⚡\n"
         "💀 *OWNER:* @R_SDanger\n"
         "⚡ *FASTEST DDOS ATTACKS AVAILABLE!*\n\n"
-        "🔹 *COMMANDS:*\n"
-        "`/attack <IP> <PORT> <TIME>` - *Launch an attack!*\n"
-        "`/genkey <days>` - *Generate a key (Admin only)*\n"
-        "`/redeem <key>` - *Activate access!*"
+        "🔹 *COMMAND LIST:*\n"
+        "`/attack <IP> <PORT> <TIME>` – *Launch an attack!*\n"
+        "`/genkey <days>` – *Generate a key (Admin only)*\n"
+        "`/redeem <key>` – *Activate access!*\n"
+        "`/buy` – *Check VIP pricing!*\n"
+        "`/into` – *Check your access expiry!*"
     )
     await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
+
+async def buy(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    message = (
+        "🔥 *BUY VIP ACCESS* 🔥\n\n"
+        "💰 *PRICING:*\n"
+        "- 1 DAY: 80\n"
+        "- 7 DAYS: 400\n"
+        "- 30 DAYS: $1200\n\n"
+        "🚀 *PAYMENT METHODS:*\n"
+        "- UPI: `ddosseller9953@axl`\n"
+        "- ✅🚀: `phonepay.me/example`\n\n"
+        "📩 *AFTER PAYMENT, SEND SCREENSHOT TO ADMIN!* \n"
+        "👑 *OWNER:* @R_SDanger"
+    )
+    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
+
+async def into(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    user_id = str(update.effective_user.id)
+
+    if user_id not in users:
+        await context.bot.send_message(chat_id=chat_id, text="❌ *YOU HAVE NO ACTIVE ACCESS!*", parse_mode='Markdown')
+        return
+
+    expiry_date = users[user_id]
+    await context.bot.send_message(chat_id=chat_id, text=f"🕐 *VIP ACCESS INFO* 🕐\n\n✅ *YOUR ACCESS IS VALID!*\n🔴 *EXPIRES ON:* `{expiry_date}`\n\n⚡ *OWNER:* @R_SDanger", parse_mode='Markdown')
 
 async def attack(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
@@ -78,7 +107,7 @@ async def attack(update: Update, context: CallbackContext):
         f"🚀 *PORT:* `{port}`\n"
         f"⏳ *DURATION:* `{time} sec`\n\n"
         f"🔥 *OWNER:* @R_SDanger\n"
-        f"⚡ *POWERED BY:* 彡[RAVI]彡"
+        f"⚡ *POWERED BY:* ☠️[RAVI]🚀"
     ), parse_mode='Markdown')
 
     asyncio.create_task(run_attack(chat_id, ip, port, time, context))
@@ -130,31 +159,18 @@ async def redeem(update: Update, context: CallbackContext):
     users[user_id] = keys[key]
     save_users(users)
     del keys[key]
-    save_keys(key)
+    save_keys(keys)
 
     await context.bot.send_message(chat_id=chat_id, text=f"✅ *ACCESS GRANTED!*\n🕐 *VALID TILL:* `{users[user_id]}`", parse_mode='Markdown')
-
-async def buy(update: Update, context: CallbackContext):
-    chat_id = update.effective_chat.id
-    message = (
-        "💰 *PRICING DETAILS* 💰\n\n"
-        "🔹 *1 DAY ACCESS* - ₹100\n"
-        "🔹 *7 DAYS ACCESS* - ₹500\n"
-        "🔹 *30 DAYS ACCESS* - ₹1500\n\n"
-        "⚡ *PAYMENT METHODS:*\n"
-        "✅ UPI: `yourupi@paytm`\n"
-        "✅ PAYTM: `yourpaytmnumber`\n\n"
-        "📩 *TO BUY, CONTACT:* @R_SDanger"
-    )
-    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
 
 def main():
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("buy", buy))
+    application.add_handler(CommandHandler("into", into))
     application.add_handler(CommandHandler("attack", attack))
     application.add_handler(CommandHandler("genkey", genkey))
     application.add_handler(CommandHandler("redeem", redeem))
- application.add_handler(CommandHandler("buy", buy))
     application.run_polling()
 
 if __name__ == '__main__':
