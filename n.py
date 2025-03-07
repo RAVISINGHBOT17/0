@@ -5,7 +5,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 
 # Bot Credentials
-TELEGRAM_BOT_TOKEN = '7675437323:AAHfZH5BwzDvBUhLzzbGM5nBgJgMD_UFUtI'
+TELEGRAM_BOT_TOKEN = '7675437323:AAG1a-W5vMpRl0Yj_QtZ0rue8vrB0taii3Y'
 ADMIN_USER_ID = 7129010361  # अपने टेलीग्राम ID से बदलो
 USERS_FILE = 'users.txt'
 KEYS_FILE = 'keys.txt'
@@ -14,7 +14,7 @@ attack_in_progress = False
 # Load Users & Keys
 def load_users():
     try:
-        with open(USERS_FILE) as f:
+        with open(USERS_FILE, 'r') as f:
             return set(line.strip() for line in f)
     except FileNotFoundError:
         return set()
@@ -27,7 +27,7 @@ users = load_users()
 
 def load_keys():
     try:
-        with open(KEYS_FILE) as f:
+        with open(KEYS_FILE, 'r') as f:
             return set(line.strip() for line in f)
     except FileNotFoundError:
         return set()
@@ -117,6 +117,7 @@ async def attack(update: Update, context: CallbackContext):
     user_id = str(update.effective_user.id)
     args = context.args
 
+    users = load_users()
     if user_id not in users:
         await context.bot.send_message(chat_id=chat_id, text="*❌ VIP Access Required! Use /redeem*", parse_mode='Markdown')
         return
@@ -126,6 +127,7 @@ async def attack(update: Update, context: CallbackContext):
         return
 
     ip, port, time = args
+
     await context.bot.send_message(chat_id=chat_id, text=(
         f"🚀 **Attack Launched!** 🚀\n"
         f"🎯 **Target:** `{ip}`\n"
@@ -135,6 +137,15 @@ async def attack(update: Update, context: CallbackContext):
     ), parse_mode='Markdown')
 
     asyncio.create_task(run_attack(chat_id, ip, port, time, context))
+
+    # **🔥 FIXED: Attack खत्म होने पर मैसेज देने का सिस्टम 🔥**
+    await asyncio.sleep(int(time))
+    await context.bot.send_message(chat_id=chat_id, text=(
+        f"💥 **Attack Stopped!** 💥\n"
+        f"🎯 **Target:** `{ip}`\n"
+        f"✅ **Attack Ended Successfully!**\n"
+        f"🔥 **Owner: @R_SDanger**"
+    ), parse_mode='Markdown')
 
 # Main Function
 def main():
