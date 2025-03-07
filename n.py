@@ -149,7 +149,7 @@ async def buy(update: Update, context: CallbackContext):
     await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
 
 def main():
-    application = Application.builder().token(7675437323:AAGqGH5mhWMUbjpoFuF2I2offywpY2Ayay0).build()
+    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("attack", attack))
     application.add_handler(CommandHandler("genkey", genkey))
