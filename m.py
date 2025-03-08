@@ -9,7 +9,7 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=lo
 
 # कॉन्फ़िगरेशन
 TELEGRAM_BOT_TOKEN = '7555897511:AAGoAFosRrkVtMq2UnaKg1sKQkRDmIB0lws'
-ADMIN_USER_ID = 7129010361
+ADMIN_USER_ID = "7129010361"  # अब ये स्ट्रिंग में है ताकि तुलना सही हो
 KEYS_FILE = 'keys.txt'
 
 # Keys लोड करने का फ़ंक्शन
@@ -40,10 +40,10 @@ async def start(update: Update, context: CallbackContext):
     print(f"✅ /start used by {chat_id} 🏁")
     await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
 
-# /genkey कमांड (सिर्फ एडमिन के लिए)
+# /genkey फिक्स्ड वर्जन
 async def genkey(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
+    user_id = str(update.effective_user.id)  # अब स्ट्रिंग में कन्वर्ट किया
 
     if user_id != ADMIN_USER_ID:
         await context.bot.send_message(chat_id=chat_id, text="🚫 *सिर्फ एडमिन इस कमांड का यूज़ कर सकता है!*", parse_mode='Markdown')
@@ -51,7 +51,7 @@ async def genkey(update: Update, context: CallbackContext):
         return
 
     args = context.args
-    if len(args) != 2:
+    if not args or len(args) != 2:
         await context.bot.send_message(chat_id=chat_id, text="⚠️ *यूसेज:* /genkey user_id दिन", parse_mode='Markdown')
         print("⚠️ Incorrect usage of /genkey command ⚙️")
         return
