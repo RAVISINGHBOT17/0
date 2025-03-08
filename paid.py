@@ -7,7 +7,7 @@ import threading
 from telebot import types
 
 # TELEGRAM BOT TOKEN
-bot = telebot.TeleBot('7555897511:AAGoAFosRrkVtMq2UnaKg1sKQkRDmIB0lws')
+bot = telebot.TeleBot('7973805250:AAHbHYf3aYKsONcH-TDsmJljEZjpLCLSixM')
 
 # GROUP AND CHANNEL DETAILS
 GROUP_ID = "-1002369239894"
